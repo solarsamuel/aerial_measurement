@@ -1,5 +1,6 @@
 import tkinter as tk
 from PIL import Image, ImageTk
+import math
 
 class LineDrawingApp:
     def __init__(self, root, image_path):
@@ -21,8 +22,16 @@ class LineDrawingApp:
         # Display the resized image on the canvas
         self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)
         
+        # Draw a 50x50 square to represent 1 inch
+        self.canvas.create_rectangle(20, 20, 70, 70, outline="blue", width=2)
+        self.canvas.create_text(45, 75, text="1 inch", fill="blue", font=("Arial", 10))
+        
         # Line drawing variables
         self.points = []  # List to store the two points
+        
+        # Label to display the distance
+        self.distance_label = tk.Label(root, text="Distance: 0.00 inches", font=("Arial", 14))
+        self.distance_label.pack(pady=10)
         
         # Bind mouse events
         self.canvas.bind("<Button-1>", self.handle_click)
@@ -43,6 +52,15 @@ class LineDrawingApp:
             x1, y1 = self.points[0]
             x2, y2 = self.points[1]
             self.canvas.create_line(x1, y1, x2, y2, fill="red", width=2)
+            
+            # Calculate the distance in pixels
+            pixel_distance = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+            
+            # Convert pixels to inches (1 inch = 50 pixels)
+            inch_distance = pixel_distance / 50
+            
+            # Update the label with the distance
+            self.distance_label.config(text=f"Distance: {inch_distance:.2f} inches")
             
             # Reset points list for next line
             self.points = []
