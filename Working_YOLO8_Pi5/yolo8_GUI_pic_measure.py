@@ -59,6 +59,13 @@ click_points = []
 def calculate_distance(x1, y1, x2, y2):
     return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
+def calculate_box_differences(box):
+    x1, y1, x2, y2 = box.xyxy[0]  # Bounding box coordinates (x_min, y_min, x_max, y_max)
+    dx = abs(x2 - x1)  # Change in x (width of the bounding box)
+    dy = abs(y2 - y1)  # Change in y (height of the bounding box)
+    diagonal = math.sqrt(dx**2 + dy**2)  # Diagonal length
+    return dx, dy, diagonal
+
 # Function to capture and process an image
 def take_picture():
     global annotated_frame  # Declare as global to access in save function
@@ -71,10 +78,39 @@ def take_picture():
     # Extract detected object class names and bounding box differences
     detected_objects = []
     box_differences = []
+    car_and_phone_differences = []
     if results[0].boxes:
         for box in results[0].boxes[:7]:  # Limit to the first 7 detected objects
             class_id = int(box.cls)  # Class ID for the detected object
-            detected_objects.append(model.names[class_id])  # Map class ID to class name
+            object_name = model.names[class_id]
+            detected_objects.append(object_name)  # Map class ID to class name
+            
+            # Calculate changes in x, y, and diagonal pixels
+            dx, dy, diagonal = calculate_box_differences(box)
+            box_differences.append((dx, dy, diagonal))
+            
+            # Filter for car and cell phone objects
+            if object_name.lower() in ["car", "cell phone"]:
+                car_and_phone_differences.append(diagonal)
+            
+    # Calculate the average delta d for car and cell phone objects (up to 7)
+    if car_and_phone_differences:
+        avg_car_phone_diagonal = sum(car_and_phone_differences) / len(car_and_phone_differences)
+    else:
+        avg_car_phone_diagonal = 0
+    
+    # Update the label with detected objects and box differences
+    if detected_objects:
+        object_text = f"Objects detected: {', '.join(detected_objects)}"
+        differences_text = "\n".join(
+            [f"{obj}: Δx={dx:.1f}, Δy={dy:.1f}, Δd={diagonal:.1f}" 
+             for obj, (dx, dy, diagonal) in zip(detected_objects, box_differences)]
+        )
+        avg_car_phone_text = f"Avg Δd (Car/Cell phone): {avg_car_phone_diagonal:.1f} pixels"
+        pixels_per_inch_text = f"Pixels per inch: {avg_car_phone_diagonal / 3:.1f}"  # Assuming 3 inches is the reference
+        detected_label.config(text=f"{object_text}\n{differences_text}\n{avg_car_phone_text}\n{pixels_per_inch_text}")
+    else:
+        detected_label.config(text="No objects detected.")
             
     # Annotate the frame with detection results
     annotated_frame = results[0].plot()
@@ -91,13 +127,6 @@ def take_picture():
     # Update the image label
     image_label.config(image=img_tk)
     image_label.image = img_tk
-
-    # Update the label with detected objects
-    if detected_objects:
-        object_text = f"Objects detected: {', '.join(detected_objects)}"
-        detected_label.config(text=object_text)
-    else:
-        detected_label.config(text="No objects detected.")
 
 # Function to save the image with current datetime as filename
 def save_image():
