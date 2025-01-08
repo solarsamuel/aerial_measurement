@@ -3,8 +3,10 @@ from picamera2 import Picamera2
 from ultralytics import YOLO
 import tkinter as tk
 from tkinter import Label
+from tkinter import filedialog
 from PIL import Image, ImageTk
 import math
+from datetime import datetime
 
 # Initialize the camera
 picam2 = Picamera2()
@@ -27,6 +29,7 @@ def calculate_box_differences(box):
 
 # Function to capture and process an image
 def take_picture():
+    global annotated_frame  # Declare as global to access in save function
     # Capture a frame from the camera
     frame = picam2.capture_array()
     
@@ -53,10 +56,7 @@ def take_picture():
     
     # Scale the average diagonal to 3 inches (assuming known scaling factor)
     inches = 3  # Target in inches
-    #pixels_per_inch = 1280 / inches  # Assuming full width is 1280 pixels for the image
-    #pixels_per_inch = scaled_avg_diagonal / inches 
     pixels_per_inch = avg_diagonal / inches 
-    #scaled_avg_diagonal = avg_diagonal / pixels_per_inch
     
     # Update the label with detected objects and box differences
     if detected_objects:
@@ -65,9 +65,7 @@ def take_picture():
             [f"{obj}: Δx={dx:.1f}, Δy={dy:.1f}, Δd={diagonal:.1f}" 
              for obj, (dx, dy, diagonal) in zip(detected_objects, box_differences)]
         )
-        #avg_diagonal_text = f"Avg Δd (scaled to 3 inches): {scaled_avg_diagonal:.1f} inches"
         avg_diagonal_text = f"Avg Δd : {avg_diagonal} pixels"
-        
         pixels_per_inch_text = f"Pixels per inch: {pixels_per_inch:.1f}"
         detected_label.config(text=f"{object_text}\n{differences_text}\n{avg_diagonal_text}\n{pixels_per_inch_text}")
     else:
@@ -88,6 +86,17 @@ def take_picture():
     # Update the image label
     image_label.config(image=img_tk)
     image_label.image = img_tk
+
+# Function to save the image with current datetime as filename
+def save_image():
+    if annotated_frame is not None:
+        # Get current datetime for the filename
+        current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"{current_time}.png"
+        
+        # Save the annotated frame
+        cv2.imwrite(filename, annotated_frame)
+        print(f"Image saved as {filename}")
 
 # Function to quit the application
 def quit_app():
@@ -115,6 +124,10 @@ button_frame.pack(fill=tk.X, pady=5)
 take_picture_button = tk.Button(button_frame, text="Take Picture", command=take_picture)
 take_picture_button.pack(side=tk.LEFT, expand=True, padx=10)
 
+# Create and place the "Save" button
+save_button = tk.Button(button_frame, text="Save Image", command=save_image)
+save_button.pack(side=tk.LEFT, expand=True, padx=10)
+
 # Create and place the "Quit" button
 quit_button = tk.Button(button_frame, text="Quit", command=quit_app)
 quit_button.pack(side=tk.RIGHT, expand=True, padx=10)
@@ -122,6 +135,9 @@ quit_button.pack(side=tk.RIGHT, expand=True, padx=10)
 # Create and place an image label below the buttons
 image_label = Label(root)
 image_label.pack()
+
+# Initialize global variable for annotated frame
+annotated_frame = None
 
 # Run the Tkinter event loop
 root.mainloop()
