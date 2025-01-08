@@ -24,6 +24,21 @@ def take_picture():
     # Run YOLO model on the captured frame
     results = model(frame)
     
+    # Extract detected object class names
+    detected_objects = []
+    if results[0].boxes:
+        for box in results[0].boxes:
+            class_id = int(box.cls)  # Class ID for the detected object
+            detected_objects.append(model.names[class_id])  # Map class ID to class name
+    
+    # Update the label with detected objects
+    if detected_objects:
+        detected_label.config(
+            text=f"Objects detected: {', '.join(detected_objects)}"
+        )
+    else:
+        detected_label.config(text="No objects detected.")
+    
     # Annotate the frame with detection results
     annotated_frame = results[0].plot()
     
@@ -51,12 +66,16 @@ root.title("YOLOv8 Object Detection")
 
 # Set default window size (half of the camera frame size)
 default_width = 1280 // 2
-default_height = 1280 // 2 + 100  # Add extra space for buttons
+default_height = 1280 // 2 + 150  # Add extra space for labels and buttons
 root.geometry(f"{default_width}x{default_height}")
+
+# Create a label to display detected objects at the top
+detected_label = Label(root, text="No objects detected.", font=("Arial", 12), fg="blue")
+detected_label.pack(pady=5)
 
 # Create a frame for the buttons
 button_frame = tk.Frame(root)
-button_frame.pack(fill=tk.X, pady=10)
+button_frame.pack(fill=tk.X, pady=5)
 
 # Create and place the "Take Picture" button
 take_picture_button = tk.Button(button_frame, text="Take Picture", command=take_picture)
