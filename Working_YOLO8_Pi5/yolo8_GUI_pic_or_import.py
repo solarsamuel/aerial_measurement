@@ -17,8 +17,11 @@ picam2.configure("preview")
 picam2.start()
 
 # Load YOLOv8 model
+#model = YOLO("yolov8x-worldv2.pt")
 model = YOLO("yolov8s-worldv2.pt")
-model.set_classes(["tree", "glasses"])
+
+
+model.set_classes(["road", "dirt road", "car", "tree", "pine tree"])
 
 # Create the Tkinter window
 root = tk.Tk()
@@ -80,10 +83,6 @@ def import_image():
         filetypes=[("Image Files", "*.jpg *.jpeg *.png *.bmp *.tiff")]
     )
     
-
-
-    
-
     if file_path and os.path.isfile(file_path):
         frame = cv2.imread(file_path)
         if frame is not None:
