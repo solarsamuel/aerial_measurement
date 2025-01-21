@@ -17,11 +17,7 @@ picam2.configure("preview")
 picam2.start()
 
 # Load YOLOv8 model
-#model = YOLO("yolov8x-worldv2.pt")
-model = YOLO("yolov8s-worldv2.pt")
-
-
-model.set_classes(["road", "dirt road", "car", "tree", "pine tree"])
+model = YOLO("yolov8s.pt")
 
 # Create the Tkinter window
 root = tk.Tk()
@@ -59,6 +55,25 @@ image_label.pack()
 # Initialize global variables
 annotated_frame = None
 click_points = []
+current_mode = "toy"
+unit = "inches"  # Default unit for toy mode
+
+# Function to toggle between "toy" and "real" modes
+def toggle_mode():
+    global current_mode, unit
+    if current_mode == "toy":
+        current_mode = "real"
+        unit = "foot"
+        toggle_button.config(text="Mode: Real Car (ft)")
+    else:
+        current_mode = "toy"
+        unit = "inch"
+        toggle_button.config(text="Mode: Toy Car (inches)")
+    update_detected_label()  # Update the label with the current mode
+
+# Function to update the detected label based on mode
+def update_detected_label():
+    detected_label.config(fg="green" if current_mode == "toy" else "red")
 
 def calculate_distance(x1, y1, x2, y2):
     return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
@@ -79,10 +94,8 @@ def import_image():
     global annotated_frame
     file_path = filedialog.askopenfilename(
         title="Select an Image",
-        #filetypes=[("Image Files", "*.jpg;*.jpeg;*.png;*.bmp;*.tiff")]
         filetypes=[("Image Files", "*.jpg *.jpeg *.png *.bmp *.tiff")]
     )
-    
     if file_path and os.path.isfile(file_path):
         frame = cv2.imread(file_path)
         if frame is not None:
@@ -91,7 +104,7 @@ def import_image():
             detected_label.config(text="Invalid image selected. Please try again.")
 
 def process_frame(frame):
-    global annotated_frame
+    global annotated_frame, unit, normalization_factor, avg_car_phone_diagonal
     results = model(frame)
     detected_objects = []
     box_differences = []
@@ -104,7 +117,6 @@ def process_frame(frame):
             detected_objects.append(object_name)
             dx, dy, diagonal = calculate_box_differences(box)
             box_differences.append((dx, dy, diagonal))
-
             if object_name.lower() in ["car", "cell phone"]:
                 car_and_phone_differences.append(diagonal)
 
@@ -116,14 +128,26 @@ def process_frame(frame):
             [f"{obj}: Δx={dx:.1f}, Δy={dy:.1f}, Δd={diagonal:.1f}"
              for obj, (dx, dy, diagonal) in zip(detected_objects, box_differences)]
         )
+        normalization_factor = 3 if current_mode == "toy" else 15  # Inches or feet
+        #normalization_factor_text = f"Pixels per Unit: {normalization_factor:.2f} "
+        #pixels_per_unit = avg_car_phone_diagonal / normalization_factor
         avg_car_phone_text = f"Avg Δd (Car/Cell phone): {avg_car_phone_diagonal:.1f} pixels"
-        pixels_per_inch_text = f"Pixels per inch: {avg_car_phone_diagonal / 3:.1f}"
-        detected_label.config(text=f"{object_text}\n{differences_text}\n{avg_car_phone_text}\n{pixels_per_inch_text}")
+        normalization_text = f"Normalized Diagonal: {avg_car_phone_diagonal / normalization_factor:.1f} pixels per {unit}"
+        #pixels_per_unit_text = f"Pixels per Unit: {pixels_per_unit:.2f} pixels/{unit}"
+        #pixels_per_unit_text = f"Pixels per Unit: {pixels_per_unit:.2f} "
+        #detected_label.config(text=f"{object_text}\n{differences_text}\n{avg_car_phone_text}\n{normalization_text}\n{pixels_per_unit_text}")
+        factor_text = f"Normalization Factor: {normalization_factor} {unit} "
+        
+        detected_label.config(text=f"{object_text}\n{differences_text}\n{avg_car_phone_text}\n{normalization_text}\n{factor_text}")
     else:
         detected_label.config(text="No objects detected.")
 
     annotated_frame = results[0].plot()
     update_image_label(annotated_frame)
+
+# Add the toggle button to the button frame
+toggle_button = tk.Button(button_frame, text="Mode: Toy Car (inches)", command=toggle_mode)
+toggle_button.pack(side=tk.LEFT, expand=True, padx=10)
 
 def update_image_label(frame):
     height, width, _ = frame.shape
@@ -142,14 +166,12 @@ def save_image():
         print(f"Image saved as {filename}")
 
 def handle_click(event):
-    global click_points
+    global click_points, unit, normalization_factor, avg_car_phone_diagonal
     click_points.append((event.x, event.y))
-
     if len(click_points) == 2:
         x1, y1 = click_points[0]
         x2, y2 = click_points[1]
         annotated_frame_with_line = annotated_frame.copy()
-
         height, width, _ = annotated_frame_with_line.shape
         resized_width = width // 2
         resized_height = height // 2
@@ -157,11 +179,12 @@ def handle_click(event):
         y1 = int(y1 * height / resized_height)
         x2 = int(x2 * width / resized_width)
         y2 = int(y2 * height / resized_height)
-
         cv2.line(annotated_frame_with_line, (x1, y1), (x2, y2), (255, 0, 0), 2)
         pixel_distance = calculate_distance(x1, y1, x2, y2)
-        inch_distance = pixel_distance / 50
-        distance_text = f"Line length: {pixel_distance:.2f} pixels, {inch_distance:.2f} inches"
+        #scaled_distance = pixel_distance / normalization_factor
+        scaled_distance = pixel_distance * normalization_factor / avg_car_phone_diagonal 
+        
+        distance_text = f"Line length: {pixel_distance:.2f} pixels, {scaled_distance:.2f} {unit}"
         detected_label.config(text=f"{detected_label.cget('text')}\n{distance_text}")
         update_image_label(annotated_frame_with_line)
         click_points = []
