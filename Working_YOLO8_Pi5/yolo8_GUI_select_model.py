@@ -41,12 +41,17 @@ picam2.start()
 model_options = {
     "yolov8n.pt": YOLO("yolov8n.pt"),
     "yolov8s.pt": YOLO("yolov8s.pt"),
+    "yolov8m.pt": YOLO("yolov8m.pt"),
+    "yolov8l.pt": YOLO("yolov8l.pt"),
+    "yolov8x.pt": YOLO("yolov8x.pt"),
     "yolov8x-worldv2.pt": YOLO("yolov8x-worldv2.pt"),
     "yolov8n-obb.pt": YOLO("yolov8n-obb.pt"),
     "yolov8x-obb.pt": YOLO("yolov8x-obb.pt"),
 }
 selected_model = StringVar(value="yolov8n.pt")
 model = model_options[selected_model.get()]
+
+#model.set_classes(["dump truck" , "tractor" , "large vehicle", "construction equipment"])
 
 # Replace toggle button with a dropdown menu
 mode_options = ["Toy Car", "Real Car", "Dump Truck"]
@@ -255,6 +260,12 @@ def handle_click(event):
   
         update_image_label(annotated_frame_with_line)
         click_points = []
+
+#print(model.names)
+
+#print(f"Detected class IDs: {[box.cls for box in results[0].boxes]}")
+#print(f"Detected class names: {[model.names[int(box.cls)] for box in results[0].boxes]}")
+
 
 image_label.bind("<Button-1>", handle_click)
 root.mainloop()
