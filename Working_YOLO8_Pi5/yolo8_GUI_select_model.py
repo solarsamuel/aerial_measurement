@@ -127,7 +127,7 @@ def import_image():
         else:
             detected_label.config(text="Invalid image selected. Please try again.")
 
-def process_frame(frame):
+def process_frame(frame, start_time):
     global annotated_frame, unit, normalization_factor, avg_car_phone_diagonal
     results = model(frame)
     detected_objects = []
@@ -153,15 +153,10 @@ def process_frame(frame):
              for obj, (dx, dy, diagonal) in zip(detected_objects, box_differences)]
         )
         normalization_factor = 3 if current_mode == "toy" else 15  # Inches or feet
-        #normalization_factor_text = f"Pixels per Unit: {normalization_factor:.2f} "
-        #pixels_per_unit = avg_car_phone_diagonal / normalization_factor
         avg_car_phone_text = f"Avg Δd (Car/Cell phone): {avg_car_phone_diagonal:.1f} pixels"
         normalization_text = f"Normalized Diagonal: {avg_car_phone_diagonal / normalization_factor:.1f} pixels per {unit}"
-        #pixels_per_unit_text = f"Pixels per Unit: {pixels_per_unit:.2f} pixels/{unit}"
-        #pixels_per_unit_text = f"Pixels per Unit: {pixels_per_unit:.2f} "
-        #detected_label.config(text=f"{object_text}\n{differences_text}\n{avg_car_phone_text}\n{normalization_text}\n{pixels_per_unit_text}")
         factor_text = f"Normalization Factor: {normalization_factor} {unit} "
-        
+
         detected_label.config(text=f"{object_text}\n{differences_text}\n{avg_car_phone_text}\n{normalization_text}\n{factor_text}")
     else:
         detected_label.config(text="No objects detected.")
@@ -169,7 +164,10 @@ def process_frame(frame):
     annotated_frame = results[0].plot()
     update_image_label(annotated_frame)
     
-
+# Calculate runtime and update the label
+    end_time = datetime.now()
+    runtime = (end_time - start_time).total_seconds()
+    runtime_label.config(text=f"Run Time: {runtime:.2f} seconds")
 
 def update_image_label(frame):
     height, width, _ = frame.shape
