@@ -17,7 +17,6 @@ root.geometry(f"{1280 // 2}x{1280 // 2 + 150}")
 instructions_label = Label(
     root,
     text=(
-        "Welcome to the YOLOv8 Object Detection and Line Drawing Tool.\n"
         "1. Select a YOLO model and mode (Toy Car, Real Car, or Dump Truck).\n"
         "2. Take a picture or import an image.\n"
         "3. Click on two points in the image to measure the distance between them.\n"
@@ -51,7 +50,7 @@ model = model_options[selected_model.get()]
 
 # Replace toggle button with a dropdown menu
 mode_options = ["Toy Car", "Real Car", "Dump Truck"]
-selected_mode = StringVar(value=mode_options[0])  # Default to "Toy Car"
+selected_mode = StringVar(value=mode_options[1])  # Default to "toy Car"
 
 # Labels and dropdown menu for models
 detected_label = Label(root, text="No objects detected.", font=("Arial", 12), fg="blue")
@@ -97,8 +96,8 @@ runtime_label.pack(pady=5)
 
 annotated_frame = None
 click_points = []
-current_mode = "toy"
-unit = "inches"
+current_mode = "real"
+unit = "feet"
 
 
 
@@ -120,6 +119,7 @@ def update_mode(*args):
     update_detected_label()
 
 selected_mode.trace_add("write", update_mode)
+#selected_model.trace_add("write", lambda *args: update_model())
 
 
         
@@ -129,8 +129,20 @@ def update_detected_label():
 
 
 def update_model():
+    """
+    Update the selected YOLO model and configure its classes if the selected model is 'yolov8x-worldv2.pt'.
+    """
     global model
-    model = model_options[selected_model.get()]
+    selected_model_name = selected_model.get()
+    model = model_options[selected_model_name]
+
+    # Configure classes for 'yolov8x-worldv2.pt'
+    if selected_model_name == "yolov8x-worldv2.pt":
+        model.set_classes(["dump truck", "tractor", "large vehicle", "construction equipment"])
+        print("Using yolov8x-worldv2.pt - Configured for detecting dump truck and related objects.")
+    else:
+        print(f"Using {selected_model_name} - No specific classes configured.")
+
 
 def calculate_distance(x1, y1, x2, y2):
     return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
@@ -238,7 +250,7 @@ def handle_click(event):
         #scaled_distance = pixel_distance / normalization_factor
         scaled_distance = pixel_distance * normalization_factor / avg_car_phone_diagonal 
         
-        distance_text = f"Line length: {pixel_distance:.2f} pixels, {scaled_distance:.2f} {unit}"
+        distance_text = f"Estimated Line length: {pixel_distance:.2f} pixels, {scaled_distance:.2f} {unit}"
         detected_label.config(text=f"{detected_label.cget('text')}\n{distance_text}")
   
         update_image_label(annotated_frame_with_line)
