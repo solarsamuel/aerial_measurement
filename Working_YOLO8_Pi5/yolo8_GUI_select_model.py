@@ -13,6 +13,23 @@ root = tk.Tk()
 root.title("YOLOv8 Object Detection and Line Drawing")
 root.geometry(f"{1280 // 2}x{1280 // 2 + 150}")
 
+# Add explanatory text at the top
+instructions_label = Label(
+    root,
+    text=(
+        "Welcome to the YOLOv8 Object Detection and Line Drawing Tool.\n"
+        "1. Select a YOLO model and mode (Toy Car, Real Car, or Dump Truck).\n"
+        "2. Take a picture or import an image.\n"
+        "3. Click on two points in the image to measure the distance between them.\n"
+        "4. Save the annotated image if needed."
+    ),
+    font=("Arial", 10),
+    justify="center",
+    wraplength=500,
+    fg="black",
+)
+instructions_label.pack(pady=10)
+
 # Initialize the camera
 picam2 = Picamera2()
 picam2.preview_configuration.main.size = (1280, 1280)
@@ -32,7 +49,9 @@ model_options = {
 selected_model = StringVar(value="yolov8n.pt")
 model = model_options[selected_model.get()]
 
-
+# Replace toggle button with a dropdown menu
+mode_options = ["Toy Car", "Real Car", "Dump Truck"]
+selected_mode = StringVar(value=mode_options[0])  # Default to "Toy Car"
 
 # Labels and dropdown menu for models
 detected_label = Label(root, text="No objects detected.", font=("Arial", 12), fg="blue")
@@ -43,6 +62,12 @@ model_label.pack()
 
 model_dropdown = OptionMenu(root, selected_model, *model_options.keys())
 model_dropdown.pack()
+
+mode_label = Label(root, text="Select Mode:")
+mode_label.pack()
+
+mode_dropdown = OptionMenu(root, selected_mode, *mode_options)
+mode_dropdown.pack()
 
 # Frame for buttons
 button_frame = tk.Frame(root)
@@ -60,8 +85,8 @@ save_button.pack(side=tk.LEFT, expand=True, padx=10)
 quit_button = tk.Button(button_frame, text="Quit", command=root.quit)
 quit_button.pack(side=tk.RIGHT, expand=True, padx=10)
 
-toggle_button = tk.Button(button_frame, text="Mode: Toy Car (inches)", command=lambda: toggle_mode())
-toggle_button.pack(side=tk.LEFT, expand=True, padx=10)
+#toggle_button = tk.Button(button_frame, text="Mode: Toy Car (inches)", command=lambda: toggle_mode())
+#toggle_button.pack(side=tk.LEFT, expand=True, padx=10)
 
 # Image label
 image_label = Label(root)
@@ -75,17 +100,28 @@ click_points = []
 current_mode = "toy"
 unit = "inches"
 
-def toggle_mode():
-    global current_mode, unit
-    if current_mode == "toy":
-        current_mode = "real"
-        unit = "foot"
-        toggle_button.config(text="Mode: Real Car (ft)")
-    else:
+
+
+def update_mode(*args):
+    global current_mode, unit, normalization_factor
+    mode = selected_mode.get()
+    if mode == "Toy Car":
         current_mode = "toy"
-        unit = "inch"
-        toggle_button.config(text="Mode: Toy Car (inches)")
-        update_detected_label()  # Update the label
+        unit = "inches"
+        normalization_factor = 3
+    elif mode == "Real Car":
+        current_mode = "real"
+        unit = "feet"
+        normalization_factor = 15
+    elif mode == "Dump Truck":
+        current_mode = "dump_truck"
+        unit = "meters"
+        normalization_factor = 8  # Adjust this value as needed
+    update_detected_label()
+
+selected_mode.trace_add("write", update_mode)
+
+
         
 # Function to update the detected label based on mode
 def update_detected_label():
